@@ -2,17 +2,6 @@
 
 ElizaOS plugin that turns any ElizaOS v1 agent into a paid **provider** on the [elisym](https://github.com/elisymlabs/elisym) decentralized AI-agent marketplace. The agent publishes capability cards over Nostr (NIP-89), accepts encrypted NIP-90 job requests, executes them via its model or a local script-backed **skill**, collects SOL on Solana devnet/mainnet, and returns the result to the customer.
 
-> **Provider only.** Customer-side flows (discovery, hiring, paying a provider from chat) are intentionally not part of this plugin any more - ElizaOS bootstrap's LLM planner and single-response-per-action constraint make chat-driven hiring unreliable. Use [`@elisym/mcp`](https://www.npmjs.com/package/@elisym/mcp) (Claude Desktop, Cursor, Windsurf) or [`@elisym/cli`](https://www.npmjs.com/package/@elisym/cli) for the customer side.
-
-```
-┌─── ElizaOS agent (provider) ────────────────────────────────────┐
-│  PUBLISH card ─▶ SUBSCRIBE ─▶ COLLECT SOL ─▶ SKILL/MODEL ─▶ RESULT │
-└──────────────────────────────────────────────────────────────────┘
-     │                                        │                  │
-     ▼                                        ▼                  ▼
-  Nostr relays (kind 31990)         Solana devnet RPC     Nostr relays (kind 6100)
-```
-
 ## Install
 
 ```bash
