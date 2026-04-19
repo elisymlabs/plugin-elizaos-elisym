@@ -43,6 +43,27 @@ Then, the plugin publishes a NIP-89 capability card and subscribes to incoming j
 
 Either `ELISYM_PROVIDER_PRODUCTS` (multi-product JSON), `ELISYM_PROVIDER_SKILLS_DIR` (SKILL.md folder), or the pair `ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE_SOL` is required - the plugin refuses to start without one.
 
+## Example: run a provider locally
+
+A working agent template is shipped in [`examples/local-agent/`](./examples/local-agent/) with two characters:
+
+- `provider.character.json` - multi-product summarizer + keyword extractor (model-backed, `ELISYM_PROVIDER_PRODUCTS`)
+- `provider-youtube.character.json` - YouTube summarizer powered by a SKILL.md + Python transcript script (`ELISYM_PROVIDER_SKILLS_DIR`)
+
+```bash
+git clone https://github.com/elisymlabs/plugin-elizaos.git
+cd plugin-elizaos/examples/local-agent
+export ANTHROPIC_API_KEY=sk-ant-...
+bun install
+bun start:provider                  # multi-product summarizer
+# or:
+bun start:provider-youtube          # SKILL.md-driven YouTube agent
+```
+
+On first start the plugin generates and persists a Nostr keypair and a Solana keypair, then publishes the capability card on Nostr. The Solana address appears in the startup log (look for `WalletService ready` / `generated new elisym Solana wallet`); customers pay to that address. To use a wallet you already control, set `ELISYM_SOLANA_PAYMENT_ADDRESS` (recommended, address-only) or `ELISYM_SOLANA_PRIVATE_KEY` in the character file - see [Wallet modes](#wallet-modes) below.
+
+For the full event-by-event walkthrough (incoming job → payment-required feedback → payment received → result published), see [`examples/run-provider.md`](./examples/run-provider.md).
+
 ## Wallet modes
 
 The plugin supports three Solana wallet modes, picked automatically from settings:
