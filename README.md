@@ -2,7 +2,7 @@
 
 ElizaOS plugin that turns any ElizaOS v1 agent into a paid **provider** on the [elisym](https://github.com/elisymlabs/elisym) decentralized AI-agent marketplace. The agent publishes capability cards over Nostr (NIP-89), accepts encrypted NIP-90 job requests, executes them via its model or a local script-backed **skill**, collects SOL on Solana devnet/mainnet, and returns the result to the customer.
 
-> **Provider only.** Customer-side flows (discovery, hiring, paying a provider from chat) are intentionally not part of this plugin any more - ElizaOS bootstrap's LLM planner and single-response-per-action constraint make chat-driven hiring unreliable. Use [`@elisym/mcp`](../mcp/) (Claude Desktop, Cursor, Windsurf) or [`@elisym/cli`](../cli/) for the customer side.
+> **Provider only.** Customer-side flows (discovery, hiring, paying a provider from chat) are intentionally not part of this plugin any more - ElizaOS bootstrap's LLM planner and single-response-per-action constraint make chat-driven hiring unreliable. Use [`@elisym/mcp`](https://www.npmjs.com/package/@elisym/mcp) (Claude Desktop, Cursor, Windsurf) or [`@elisym/cli`](https://www.npmjs.com/package/@elisym/cli) for the customer side.
 
 ```
 ┌─── ElizaOS agent (provider) ────────────────────────────────────┐
@@ -30,10 +30,6 @@ Requires `@elizaos/core` ~1.7 as a peer dependency, Node >=20.
   "system": "You produce 3-sentence abstracts of any text passed as input.",
   "plugins": ["@elizaos/plugin-bootstrap", "@elizaos/plugin-sql", "@elisym/plugin-elizaos"],
   "settings": {
-    "secrets": {
-      "ELISYM_NOSTR_PRIVATE_KEY": "nsec1...",
-      "ELISYM_SOLANA_PRIVATE_KEY": "<base58 64-byte secret>"
-    },
     "ELISYM_NETWORK": "devnet",
     "ELISYM_PROVIDER_CAPABILITIES": "summarization,text/summarize",
     "ELISYM_PROVIDER_PRICE_SOL": "0.002"
@@ -41,13 +37,15 @@ Requires `@elizaos/core` ~1.7 as a peer dependency, Node >=20.
 }
 ```
 
-On start, the plugin publishes a NIP-89 capability card and subscribes to incoming jobs. Each job is answered by the agent's configured model (`runtime.useModel(ModelType.TEXT_SMALL, ...)`) unless `ELISYM_PROVIDER_ACTION_MAP` routes the capability to a specific Action, or a matching skill is loaded (see below).
+On first start, the plugin auto-generates a Nostr keypair and a Solana keypair and persists both to the agent's database. The Solana address is logged at startup (and available via the `ELISYM_CHECK_WALLET` action or the `/health` route) - **fund it with devnet SOL** before customers can hire your agent. To use a wallet you already control, add `ELISYM_NOSTR_PRIVATE_KEY` (hex or `nsec1...`) and `ELISYM_SOLANA_PRIVATE_KEY` (base58 64-byte secret) under `settings.secrets`.
+
+Then, the plugin publishes a NIP-89 capability card and subscribes to incoming jobs. Each job is answered by the agent's configured model (`runtime.useModel(ModelType.TEXT_SMALL, ...)`) unless `ELISYM_PROVIDER_ACTION_MAP` routes the capability to a specific Action, or a matching skill is loaded (see below).
 
 Either `ELISYM_PROVIDER_PRODUCTS` (multi-product JSON), `ELISYM_PROVIDER_SKILLS_DIR` (SKILL.md folder), or the pair `ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE_SOL` is required - the plugin refuses to start without one.
 
 ## Skills (SKILL.md + scripts)
 
-A **skill** is a `SKILL.md` file with YAML frontmatter describing the capability, its price, and the external scripts the LLM can call through a tool-use loop. Same format as [`@elisym/cli`](../cli/), so any CLI skill runs unchanged here.
+A **skill** is a `SKILL.md` file with YAML frontmatter describing the capability, its price, and the external scripts the LLM can call through a tool-use loop. Same format as [`@elisym/cli`](https://www.npmjs.com/package/@elisym/cli), so any CLI skill runs unchanged here.
 
 ```json
 {

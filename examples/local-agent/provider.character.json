@@ -9,10 +9,6 @@
     "@elisym/plugin-elizaos"
   ],
   "settings": {
-    "secrets": {
-      "ELISYM_NOSTR_PRIVATE_KEY": "",
-      "ELISYM_SOLANA_PRIVATE_KEY": ""
-    },
     "ANTHROPIC_SMALL_MODEL": "claude-haiku-4-5-20251001",
     "ANTHROPIC_LARGE_MODEL": "claude-haiku-4-5-20251001",
     "ELISYM_NETWORK": "devnet",
