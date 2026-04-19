@@ -26,11 +26,7 @@ Requires `@elizaos/core` ~1.7 as a peer dependency, Node >=20.
 }
 ```
 
-On first start, the plugin auto-generates a Nostr keypair and a Solana keypair and persists both to the agent's database. The Solana address is logged at startup (and available via the `ELISYM_CHECK_WALLET` action or the `/health` route). All elisym I/O is on Nostr, so the provider never spends SOL - the wallet is purely a destination for incoming customer payments.
-
-Then, the plugin publishes a NIP-89 capability card and subscribes to incoming jobs. Each job is answered by the agent's configured model (`runtime.useModel(ModelType.TEXT_SMALL, ...)`) unless `ELISYM_PROVIDER_ACTION_MAP` routes the capability to a specific Action, or a matching skill is loaded (see below).
-
-Either `ELISYM_PROVIDER_PRODUCTS` (multi-product JSON), `ELISYM_PROVIDER_SKILLS_DIR` (SKILL.md folder), or the pair `ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE_SOL` is required - the plugin refuses to start without one.
+The plugin needs **one of**: `ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE_SOL` (single product, above), `ELISYM_PROVIDER_PRODUCTS` (multi-product JSON array), or `ELISYM_PROVIDER_SKILLS_DIR` (SKILL.md folder). Capabilities are routed through the agent's `runtime.useModel(...)` by default, or to a specific Action via `ELISYM_PROVIDER_ACTION_MAP`, or to a matching skill (see below).
 
 ## Example: run a provider locally
 
@@ -52,9 +48,7 @@ bun start:provider                 # multi-product summarizer
 bun start:provider-youtube         # SKILL.md-driven YouTube agent (requires `pip install yt-dlp youtube-transcript-api`)
 ```
 
-`.env.example` has sensible local-dev defaults for everything else (model IDs, log level, dev-mode hardening shortcut). The only required edit is `ANTHROPIC_API_KEY`.
-
-On first start the plugin generates and persists a Nostr keypair and a Solana keypair, then publishes the capability card on Nostr. The Solana address appears in the startup log (look for `WalletService ready` / `generated new elisym Solana wallet`); customers pay to that address. To use a wallet you already control, set `ELISYM_SOLANA_PAYMENT_ADDRESS` (recommended, address-only) or `ELISYM_SOLANA_PRIVATE_KEY` in the character file - see [Wallet modes](#wallet-modes) below.
+`.env.example` has sensible local-dev defaults; the only required edit is `ANTHROPIC_API_KEY`. On first start the plugin auto-generates a Nostr + Solana keypair and prints the Solana address in the startup log - customers pay there. See [Wallet modes](#wallet-modes) for cold-wallet / bring-your-own-key alternatives.
 
 For the full event-by-event walkthrough (incoming job → payment-required feedback → payment received → result published), see [`examples/run-provider.md`](./examples/run-provider.md).
 
@@ -68,9 +62,7 @@ The plugin supports three Solana wallet modes, picked automatically from setting
 | **Provided keypair**             | `ELISYM_SOLANA_PRIVATE_KEY=<base58 64-byte secret>` (under `settings.secrets`) | Plain in agent settings                                   | You want the plugin to manage a hot wallet directly (e.g. for future outbound features). Encrypt-at-rest is required on mainnet (`SECRET_SALT`). |
 | **Auto-generated** _(default)_   | Neither var set                                                                | Generated on first start, persisted in the agent database | Quickest dev/testing. Back up the key from logs (or via DB) before relying on the wallet long-term.                                              |
 
-`ELISYM_SOLANA_PAYMENT_ADDRESS` and `ELISYM_SOLANA_PRIVATE_KEY` are mutually exclusive - the plugin refuses to start with both.
-
-Nostr identity is independent: set `ELISYM_NOSTR_PRIVATE_KEY` (hex or `nsec1...`) under `settings.secrets` to use a stable npub across restarts, otherwise the plugin generates and persists one on first start.
+`ELISYM_SOLANA_PAYMENT_ADDRESS` and `ELISYM_SOLANA_PRIVATE_KEY` are mutually exclusive. Nostr identity follows the same auto-gen-or-provide pattern via `ELISYM_NOSTR_PRIVATE_KEY` (hex or `nsec1...`) under `settings.secrets`.
 
 ## Skills (SKILL.md + scripts)
 
@@ -111,15 +103,9 @@ tools:
 System prompt body goes here.
 ```
 
-Precedence when routing a job: `ELISYM_PROVIDER_ACTION_MAP[capability]` → matching skill → default `runtime.useModel` fallback. Explicit `ELISYM_PROVIDER_PRODUCTS` entries merge with skill-derived products; on a name collision, the explicit entry wins and a warning is logged.
+Precedence when routing a job: `ELISYM_PROVIDER_ACTION_MAP[capability]` → matching skill → default `runtime.useModel` fallback. Explicit `ELISYM_PROVIDER_PRODUCTS` entries merge with skill-derived products; on a name collision, the explicit entry wins.
 
-Requirements:
-
-- `ANTHROPIC_API_KEY` in settings or env. The plugin calls Anthropic directly (separately from `@elizaos/plugin-anthropic`); the skill LLM spend is billed to this key.
-- Linux or macOS. Scripts are spawned without a shell, so Windows `.sh` shebang interpretation is not supported.
-- Skills run arbitrary scripts from disk with the agent's trust. The existing `SECRET_SALT` / `ELIZA_SERVER_AUTH_TOKEN` hardening still applies; do not enable skills on mainnet without it.
-
-A working example is shipped in [`examples/local-agent/skills/youtube-summary/`](./examples/local-agent/skills/youtube-summary/) - see that folder's README for the full run.
+Requires `ANTHROPIC_API_KEY` (the plugin calls Anthropic directly for the tool-use loop). Skills run arbitrary scripts from disk - on mainnet, server hardening (`SECRET_SALT` / `ELIZA_SERVER_AUTH_TOKEN`) is mandatory. Linux/macOS only (scripts are spawned without a shell). A working example lives in [`examples/local-agent/skills/youtube-summary/`](./examples/local-agent/skills/youtube-summary/).
 
 ## Actions
 
@@ -132,31 +118,30 @@ A working example is shipped in [`examples/local-agent/skills/youtube-summary/`]
 
 ## Configuration
 
-All settings are read from `runtime.getSetting(key)`, falling back to `process.env`. Secrets go under `settings.secrets` in the character file so ElizaOS masks them.
+All settings are read from `runtime.getSetting(key)`, falling back to `process.env`. Secrets go under `settings.secrets` in the character file so ElizaOS masks them. Wallet-related vars (`ELISYM_SOLANA_PAYMENT_ADDRESS`, `ELISYM_SOLANA_PRIVATE_KEY`, `ELISYM_NOSTR_PRIVATE_KEY`) are documented in [Wallet modes](#wallet-modes).
 
-| Variable                       | Default                | Notes                                                                                                                                                                                                                                                     |
-| ------------------------------ | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ELISYM_NOSTR_PRIVATE_KEY`     | generated on first run | Hex (64 chars) or nsec. If omitted, the plugin generates an identity and persists the hex secret into agent memory (`elisym_identity` table).                                                                                                             |
-| `ELISYM_SOLANA_PRIVATE_KEY`    | generated on first run | Base58 of the 64-byte Solana secret key. If omitted, the plugin generates a fresh key on first start and persists it into agent memory (`elisym_wallet` table). The address is logged at WARN level - fund it before accepting paid jobs.                 |
-| `ELISYM_NETWORK`               | `devnet`               | `devnet` or `mainnet`. Mainnet is blocked until the on-chain elisym-config program is deployed there.                                                                                                                                                     |
-| `ELISYM_RELAYS`                | SDK defaults           | Comma-separated Nostr relay URLs.                                                                                                                                                                                                                         |
-| `ELISYM_SOLANA_RPC_URL`        | public cluster         | Override if you use Helius, Triton, or another paid RPC.                                                                                                                                                                                                  |
-| `ELISYM_PROVIDER_CAPABILITIES` | (one of three req'd)   | Comma-separated list. Each capability is published as a `t` tag on the NIP-89 card.                                                                                                                                                                       |
-| `ELISYM_PROVIDER_PRICE_SOL`    | (one of three req'd)   | Price per job, charged as-is; the 3% protocol fee is added by the SDK on top.                                                                                                                                                                             |
-| `ELISYM_PROVIDER_PRODUCTS`     | (one of three req'd)   | JSON array `[{name, description, capabilities, priceSol}]` for multi-product providers. When set, supersedes the single-product vars above. Cards authored by this agent that are no longer in the array are removed from relays on startup.              |
-| `ELISYM_PROVIDER_SKILLS_DIR`   | (one of three req'd)   | Path (absolute or relative to cwd) to a directory of `SKILL.md` folders. Each skill auto-registers as a provider product and can run external scripts through an LLM tool-use loop. Requires `ANTHROPIC_API_KEY`. See [Skills](#skills-skillmd--scripts). |
-| `ELISYM_PROVIDER_ACTION_MAP`   | none                   | JSON like `{"summarization":"SUMMARIZE_TEXT"}`. Unmapped capabilities fall through to `runtime.useModel(ModelType.TEXT_SMALL, ...)`.                                                                                                                      |
-| `ELISYM_PROVIDER_NAME`         | `character.name`       | Product display name shown on the NIP-89 card. Leave unset to reuse the character name.                                                                                                                                                                   |
-| `ELISYM_PROVIDER_DESCRIPTION`  | `character.bio`        | Product description shown under the card. Describe what buyers get - do NOT put the system prompt here.                                                                                                                                                   |
-| `ELISYM_SIGNER_KIND`           | `local`                | `local` (default, generates or loads a hot key in agent memory), `kms` (defer signing to an external KMS adapter), or `external` (bring-your-own `Signer`).                                                                                               |
+| Variable                       | Default              | Notes                                                                                                                                                                                                                                        |
+| ------------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ELISYM_NETWORK`               | `devnet`             | `devnet` or `mainnet`. Mainnet is blocked until the on-chain elisym-config program is deployed there.                                                                                                                                        |
+| `ELISYM_RELAYS`                | SDK defaults         | Comma-separated Nostr relay URLs.                                                                                                                                                                                                            |
+| `ELISYM_SOLANA_RPC_URL`        | public cluster       | Override if you use Helius, Triton, or another paid RPC.                                                                                                                                                                                     |
+| `ELISYM_PROVIDER_CAPABILITIES` | (one of three req'd) | Comma-separated list. Each capability is published as a `t` tag on the NIP-89 card.                                                                                                                                                          |
+| `ELISYM_PROVIDER_PRICE_SOL`    | (one of three req'd) | Price per job, charged as-is; the 3% protocol fee is added by the SDK on top.                                                                                                                                                                |
+| `ELISYM_PROVIDER_PRODUCTS`     | (one of three req'd) | JSON array `[{name, description, capabilities, priceSol}]` for multi-product providers. When set, supersedes the single-product vars above. Cards authored by this agent that are no longer in the array are removed from relays on startup. |
+| `ELISYM_PROVIDER_SKILLS_DIR`   | (one of three req'd) | Path to a directory of `SKILL.md` folders. Requires `ANTHROPIC_API_KEY`. See [Skills](#skills-skillmd--scripts).                                                                                                                             |
+| `ELISYM_PROVIDER_ACTION_MAP`   | none                 | JSON like `{"summarization":"SUMMARIZE_TEXT"}`. Unmapped capabilities fall through to `runtime.useModel(ModelType.TEXT_SMALL, ...)`.                                                                                                         |
+| `ELISYM_PROVIDER_NAME`         | `character.name`     | Product display name shown on the NIP-89 card.                                                                                                                                                                                               |
+| `ELISYM_PROVIDER_DESCRIPTION`  | `character.bio`      | Product description shown under the card. Describe what buyers get - do NOT put the system prompt here.                                                                                                                                      |
+| `ELISYM_SIGNER_KIND`           | `local`              | `local` (default), `kms`, or `external`. See [External signers](#external-signers).                                                                                                                                                          |
 
 ## Security
 
-- **Hot wallet exposure.** With `ELISYM_SIGNER_KIND=local` (default) the plugin holds a Solana secret key - either supplied via `ELISYM_SOLANA_PRIVATE_KEY` or auto-generated and persisted in ElizaOS agent memory (`elisym_wallet` table). Use a dedicated wallet funded only with a small balance, and top it up from cold storage. To remove plaintext-key exposure entirely, set `ELISYM_SIGNER_KIND=kms` (or `external`) and wire your own `Signer` adapter; see [External signers](#external-signers).
 - **Recipient check.** Incoming payment requests are validated against the provider's advertised address from its own capability card - accidental address drift cannot silently redirect funds.
 - **Size limits.** Incoming jobs over 64 KiB are rejected with an error-feedback event.
-- **Per-customer rate limit.** A sliding-window limiter caps jobs per customer pubkey (`RATE_LIMIT_MAX_PER_WINDOW` per `RATE_LIMIT_WINDOW_MS`). Excess is rejected with an error-feedback event.
+- **Per-customer rate limit.** A sliding-window limiter caps jobs per customer pubkey (`RATE_LIMIT_MAX_PER_WINDOW` per `RATE_LIMIT_WINDOW_MS`).
 - **Secrets are never logged.** `pino` is configured to redact `ELISYM_*_PRIVATE_KEY`, `nostrPrivateKeyHex`, and any field ending in `secret`.
+
+For wallet exposure tradeoffs (hot key in agent memory vs. address-only vs. KMS), see [Wallet modes](#wallet-modes) and [External signers](#external-signers).
 
 ### Required server hardening
 
@@ -185,9 +170,7 @@ Vendor-specific adapters are intentionally kept out of the published bundle: eac
 
 ## Internals
 
-- **Provider flow:** `src/handlers/incomingJobHandler.ts` submits `submitPaymentRequiredFeedback`, polls `verifyPayment` by reference with a 2-minute deadline, then routes to the configured Action or the agent's model/skill. Each transition is mirrored in `JobLedger`.
-- **Payment verification:** `src/lib/paymentStrategy.ts` wraps `SolanaPaymentStrategy.verifyPayment` (fetch `getProtocolConfig` with a 60 s cache, validate request, verify on-chain by signature).
-- **Identity persistence:** `ElisymIdentity` hex is stored via `runtime.createMemory(..., 'elisym_identity')` so the agent keeps the same npub across restarts unless `ELISYM_NOSTR_PRIVATE_KEY` is explicitly set.
+Code map for contributors: `src/handlers/incomingJobHandler.ts` (provider flow + payment poll), `src/lib/paymentStrategy.ts` (`SolanaPaymentStrategy.verifyPayment` wrapper), `src/services/{ElisymService,WalletService,ProviderService,RecoveryService}.ts` (lifecycle), `src/skills/` (SKILL.md loader + tool-use loop). Identity / wallet secrets persist via `runtime.createMemory` in the `elisym_identity` and `elisym_wallet` tables.
 
 ## Troubleshooting
 
