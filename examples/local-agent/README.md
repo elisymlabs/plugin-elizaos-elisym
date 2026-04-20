@@ -1,6 +1,6 @@
 # Local-agent sandbox
 
-Runs a real ElizaOS v1 agent that loads `@elisym/plugin-elizaos` from npm. Two character files are provided so you can pick the flow you want to demo:
+Runs a real ElizaOS v1 agent that loads `@elisym/plugin-elizaos-elisym` from npm. Two character files are provided so you can pick the flow you want to demo:
 
 - `provider.character.json` - simple LLM-backed provider (summarization + keyword extraction via `useModel`)
 - `provider-youtube.character.json` - skill-backed provider that runs a Python `yt-dlp` script and returns YouTube summaries / keypoints
@@ -18,7 +18,7 @@ cp .env.example .env
 bun install
 ```
 
-`bun install` pulls `@elisym/plugin-elizaos` from npm (the `~` constraint in `package.json` allows patch updates without re-installing).
+`bun install` pulls `@elisym/plugin-elizaos-elisym` from npm (the `~` constraint in `package.json` allows patch updates without re-installing).
 
 ---
 
@@ -120,7 +120,7 @@ Notes:
 
 ## 5. Iterating on the plugin source
 
-If you want to hack on `@elisym/plugin-elizaos` itself and see changes live in this example, work in a clone of the [plugin repo](https://github.com/elisymlabs/plugin-elizaos-elisym) and link it:
+If you want to hack on `@elisym/plugin-elizaos-elisym` itself and see changes live in this example, work in a clone of the [plugin repo](https://github.com/elisymlabs/plugin-elizaos-elisym) and link it:
 
 ```bash
 # inside the plugin repo root
@@ -128,7 +128,7 @@ bun run build
 bun link
 
 # back in examples/local-agent
-bun link @elisym/plugin-elizaos
+bun link @elisym/plugin-elizaos-elisym
 ```
 
 `bun unlink` reverts to the published version. Without `bun link` the example always uses whatever `~` matches on npm.
@@ -137,7 +137,7 @@ bun link @elisym/plugin-elizaos
 
 ## Troubleshooting
 
-- **Agent responds but no elisym actions fire** - check the character's `plugins` array includes `@elisym/plugin-elizaos` and `LOG_LEVEL=debug` shows `ElisymService ready`.
+- **Agent responds but no elisym actions fire** - check the character's `plugins` array includes `@elisym/plugin-elizaos-elisym` and `LOG_LEVEL=debug` shows `ElisymService ready`.
 - **DB is not SQLite** - `@elizaos/plugin-sql` v1.0.x uses PGlite (postgres-in-wasm). Data lives at `./.eliza/.elizadb/` relative to the agent's working directory. The `db:inspect` / `db:clear` scripts read/write it via `@electric-sql/pglite`. If you ever want a nuclear reset: `rm -rf .eliza/.elizadb` (this also wipes the auto-generated Nostr / Solana keys, so back them up first if needed).
 - **Wrong Anthropic model** - if you see `model: claude-3-5-haiku-20241022` errors on incoming jobs, your `ANTHROPIC_SMALL_MODEL` / `ANTHROPIC_LARGE_MODEL` are unset. The retired model is `plugin-anthropic`'s default - set both to `claude-haiku-4-5-20251001` (or another current model) in `.env`.
 - **Peer dependency mismatch** - the plugin targets `@elizaos/core ~1.7.2`. Keep cli / `plugin-bootstrap` on the matching `~1.7.x` line; `plugin-anthropic` uses `~1.5.x`. `plugin-sql` stays on `~1.0.20` until a stable 1.7 line exists (2.0.x is still alpha).

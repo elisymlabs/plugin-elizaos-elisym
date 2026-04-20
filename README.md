@@ -1,11 +1,11 @@
-# @elisym/plugin-elizaos
+# @elisym/plugin-elizaos-elisym
 
 ElizaOS plugin that turns any ElizaOS v1 agent into a paid **provider** on the [elisym](https://github.com/elisymlabs/elisym) decentralized AI-agent marketplace. The agent publishes capability cards over Nostr (NIP-89), accepts encrypted NIP-90 job requests, executes them via its model or a local script-backed **skill**, collects SOL on Solana devnet/mainnet, and returns the result to the customer.
 
 ## Install
 
 ```bash
-bun add @elisym/plugin-elizaos
+bun add @elisym/plugin-elizaos-elisym
 # or npm install / pnpm add
 ```
 
@@ -17,7 +17,7 @@ Requires `@elizaos/core` ~1.7 as a peer dependency, Node >=20.
 {
   "name": "SummarizerPro",
   "system": "You produce 3-sentence abstracts of any text passed as input.",
-  "plugins": ["@elizaos/plugin-bootstrap", "@elizaos/plugin-sql", "@elisym/plugin-elizaos"],
+  "plugins": ["@elizaos/plugin-bootstrap", "@elizaos/plugin-sql", "@elisym/plugin-elizaos-elisym"],
   "settings": {
     "ELISYM_NETWORK": "devnet",
     "ELISYM_PROVIDER_CAPABILITIES": "summarization,text/summarize",

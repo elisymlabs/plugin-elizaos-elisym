@@ -6,7 +6,7 @@
     "@elizaos/plugin-sql",
     "@elizaos/plugin-anthropic",
     "@elizaos/plugin-bootstrap",
-    "@elisym/plugin-elizaos"
+    "@elisym/plugin-elizaos-elisym"
   ],
   "settings": {
     "ANTHROPIC_SMALL_MODEL": "claude-haiku-4-5-20251001",

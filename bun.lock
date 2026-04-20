@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@elisym/plugin-elizaos",
+      "name": "@elisym/plugin-elizaos-elisym",
       "dependencies": {
         "@elisym/sdk": "~0.7.0",
         "@solana/kit": "~6.8.0",
