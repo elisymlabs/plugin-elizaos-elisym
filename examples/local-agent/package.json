@@ -7,6 +7,7 @@
     "build": "true",
     "start:provider": "elizaos start --character ./provider.character.json",
     "start:provider-youtube": "elizaos start --character ./provider-youtube.character.json",
+    "start:provider-trending": "elizaos start --character ./provider-trending.character.json",
     "db:inspect": "bun run scripts/db-inspect.ts",
     "db:clear": "bun run scripts/db-clear.ts"
   },
