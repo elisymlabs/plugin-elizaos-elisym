@@ -11,7 +11,7 @@ export function createKmsSigner(ctx: SignerContext): Promise<SignerHandle> {
     return Promise.reject(
       new Error(
         `ELISYM_SIGNER_KIND=kms requires ${missing.join(', ')} to be set. ` +
-          'See https://github.com/elisymlabs/plugin-elizaos#external-signers for the integration plan.',
+          'See https://github.com/elisymlabs/plugin-elizaos-elisym#external-signers for the integration plan.',
       ),
     );
   }
@@ -20,7 +20,7 @@ export function createKmsSigner(ctx: SignerContext): Promise<SignerHandle> {
       'ELISYM_SIGNER_KIND=kms is recognized but no concrete KMS adapter is bundled. ' +
         'Implement a Signer adapter against your provider (AWS KMS, Turnkey, etc.) and ' +
         'wire it in via the createSigner factory. ' +
-        'See https://github.com/elisymlabs/plugin-elizaos#external-signers for the integration plan.',
+        'See https://github.com/elisymlabs/plugin-elizaos-elisym#external-signers for the integration plan.',
     ),
   );
 }

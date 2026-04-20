@@ -29,7 +29,7 @@ export async function createSigner(kind: SignerKind, ctx: SignerContext): Promis
   }
   throw new Error(
     'ELISYM_SIGNER_KIND=external requires a custom adapter to be wired up by the agent author. ' +
-      'See https://github.com/elisymlabs/plugin-elizaos#external-signers for the integration plan.',
+      'See https://github.com/elisymlabs/plugin-elizaos-elisym#external-signers for the integration plan.',
   );
 }
 

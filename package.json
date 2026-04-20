@@ -11,15 +11,15 @@
     "nostr",
     "solana"
   ],
-  "homepage": "https://github.com/elisymlabs/plugin-elizaos",
+  "homepage": "https://github.com/elisymlabs/plugin-elizaos-elisym",
   "bugs": {
-    "url": "https://github.com/elisymlabs/plugin-elizaos/issues"
+    "url": "https://github.com/elisymlabs/plugin-elizaos-elisym/issues"
   },
   "license": "MIT",
   "author": "elisym labs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/elisymlabs/plugin-elizaos.git"
+    "url": "https://github.com/elisymlabs/plugin-elizaos-elisym.git"
   },
   "files": [
     "dist",

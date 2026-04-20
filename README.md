@@ -36,8 +36,8 @@ A working agent template is shipped in [`examples/local-agent/`](./examples/loca
 - `provider-youtube.character.json` - YouTube summarizer powered by a SKILL.md + Python transcript script (`ELISYM_PROVIDER_SKILLS_DIR`)
 
 ```bash
-git clone https://github.com/elisymlabs/plugin-elizaos.git
-cd plugin-elizaos/examples/local-agent
+git clone https://github.com/elisymlabs/plugin-elizaos-elisym.git
+cd plugin-elizaos-elisym/examples/local-agent
 
 cp .env.example .env
 # edit .env: set ANTHROPIC_API_KEY=sk-ant-...

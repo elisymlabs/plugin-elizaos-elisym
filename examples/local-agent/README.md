@@ -120,7 +120,7 @@ Notes:
 
 ## 5. Iterating on the plugin source
 
-If you want to hack on `@elisym/plugin-elizaos` itself and see changes live in this example, work in a clone of the [plugin repo](https://github.com/elisymlabs/plugin-elizaos) and link it:
+If you want to hack on `@elisym/plugin-elizaos` itself and see changes live in this example, work in a clone of the [plugin repo](https://github.com/elisymlabs/plugin-elizaos-elisym) and link it:
 
 ```bash
 # inside the plugin repo root
