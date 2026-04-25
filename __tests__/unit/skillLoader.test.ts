@@ -50,7 +50,33 @@ You are a summarizer.
     const [skill] = skills;
     expect(skill?.name).toBe('summary-skill');
     expect(skill?.capabilities).toEqual(['summarization']);
-    expect(skill?.priceLamports).toBe(1_000_000n);
+    expect(skill?.priceSubunits).toBe(1_000_000n);
+    expect(skill?.asset.token).toBe('sol');
+  });
+
+  it('loads a USDC-priced SKILL.md', () => {
+    writeSkill(
+      'usdc-summary',
+      `---
+name: usdc-summary
+description: Summarize text (USDC)
+capabilities:
+  - summarization
+price: 0.01
+token: usdc
+---
+
+You are a summarizer.
+`,
+    );
+
+    const skills = loadSkillsFromDir(tmpDir);
+    expect(skills).toHaveLength(1);
+    const [skill] = skills;
+    expect(skill?.priceSubunits).toBe(10_000n);
+    expect(skill?.asset.token).toBe('usdc');
+    expect(skill?.asset.symbol).toBe('USDC');
+    expect(skill?.asset.mint).toBeDefined();
   });
 
   it('returns an empty array when the directory is missing', () => {

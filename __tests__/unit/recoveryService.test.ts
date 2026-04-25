@@ -1,3 +1,4 @@
+import { NATIVE_SOL } from '@elisym/sdk';
 import type { IAgentRuntime, Memory, UUID } from '@elizaos/core';
 import { describe, expect, it } from 'vitest';
 import type { ElisymConfig } from '../../src/environment';
@@ -194,7 +195,8 @@ describe('RecoveryService', () => {
       name: 'summary',
       description: 'summary',
       capabilities: ['summarization'],
-      priceLamports: 1_000_000n,
+      priceSubunits: 1_000_000n,
+      asset: NATIVE_SOL,
       async execute(input) {
         return { data: `skill-summary-of:${input.data.length}` };
       },
@@ -243,7 +245,8 @@ describe('RecoveryService', () => {
       name: 'summary',
       description: 'summary',
       capabilities: ['summarization'],
-      priceLamports: 1_000_000n,
+      priceSubunits: 1_000_000n,
+      asset: NATIVE_SOL,
       async execute() {
         throw new Error('should not reach skill.execute');
       },

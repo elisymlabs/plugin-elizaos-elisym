@@ -1,32 +1,48 @@
 import { resolve } from 'node:path';
+import { NATIVE_SOL, USDC_SOLANA_DEVNET, parseAssetAmount, type Asset } from '@elisym/sdk';
 import type { IAgentRuntime } from '@elizaos/core';
 import bs58 from 'bs58';
 import { nip19 } from 'nostr-tools';
 import { z } from 'zod';
 import { logger } from './lib/logger';
-import { solToLamports } from './lib/pricing';
 import { isValidSolanaAddress } from './lib/solana';
 
 const HEX_64 = /^[0-9a-f]{64}$/i;
 
 const networkSchema = z.enum(['devnet', 'mainnet']);
 const signerKindSchema = z.enum(['local', 'kms', 'external']);
+const tokenSchema = z.enum(['sol', 'usdc']);
 
-const MAX_SAFE_LAMPORTS = BigInt(Number.MAX_SAFE_INTEGER);
+export type ProviderPriceToken = z.infer<typeof tokenSchema>;
+
+const MAX_SAFE_SUBUNITS = BigInt(Number.MAX_SAFE_INTEGER);
+
+const AssetSchema: z.ZodType<Asset> = z.object({
+  chain: z.literal('solana'),
+  token: z.string().min(1),
+  mint: z.string().optional(),
+  decimals: z.number().int().nonnegative(),
+  symbol: z.string().min(1),
+});
 
 export const ProviderProductSchema = z.object({
   name: z.string().min(1).max(120),
   description: z.string().min(1).max(2000),
   capabilities: z.array(z.string().min(1)).min(1),
-  priceLamports: z
+  priceSubunits: z
     .bigint()
     .positive()
-    .refine((value) => value <= MAX_SAFE_LAMPORTS, {
-      message: `price in lamports must be <= ${MAX_SAFE_LAMPORTS}`,
+    .refine((value) => value <= MAX_SAFE_SUBUNITS, {
+      message: `price in subunits must be <= ${MAX_SAFE_SUBUNITS}`,
     }),
+  asset: AssetSchema,
 });
 
 export type ProviderProduct = z.infer<typeof ProviderProductSchema>;
+
+export function resolvePriceAsset(token: ProviderPriceToken): Asset {
+  return token === 'usdc' ? USDC_SOLANA_DEVNET : NATIVE_SOL;
+}
 
 export const ElisymConfigSchema = z
   .object({
@@ -46,13 +62,14 @@ export const ElisymConfigSchema = z
     relays: z.array(z.string().url()).optional(),
     solanaRpcUrl: z.string().url().optional(),
     providerCapabilities: z.array(z.string().min(1)).optional(),
-    providerPriceLamports: z
+    providerPriceSubunits: z
       .bigint()
       .positive()
-      .refine((value) => value <= MAX_SAFE_LAMPORTS, {
-        message: `ELISYM_PROVIDER_PRICE_SOL in lamports must be <= ${MAX_SAFE_LAMPORTS} (Number.MAX_SAFE_INTEGER); larger values cannot be published safely on the wire`,
+      .refine((value) => value <= MAX_SAFE_SUBUNITS, {
+        message: `ELISYM_PROVIDER_PRICE in subunits must be <= ${MAX_SAFE_SUBUNITS} (Number.MAX_SAFE_INTEGER); larger values cannot be published safely on the wire`,
       })
       .optional(),
+    providerPriceAsset: AssetSchema.optional(),
     providerActionMap: z.record(z.string(), z.string()).optional(),
     providerName: z.string().min(1).max(120).optional(),
     providerDescription: z.string().min(1).max(2000).optional(),
@@ -70,12 +87,13 @@ export const ElisymConfigSchema = z
       return (
         cfg.providerCapabilities !== undefined &&
         cfg.providerCapabilities.length > 0 &&
-        cfg.providerPriceLamports !== undefined
+        cfg.providerPriceSubunits !== undefined &&
+        cfg.providerPriceAsset !== undefined
       );
     },
     {
       message:
-        'Provider requires one of: ELISYM_PROVIDER_PRODUCTS (JSON array), ELISYM_PROVIDER_SKILLS_DIR, or both ELISYM_PROVIDER_CAPABILITIES and ELISYM_PROVIDER_PRICE_SOL',
+        'Provider requires one of: ELISYM_PROVIDER_PRODUCTS (JSON array), ELISYM_PROVIDER_SKILLS_DIR, or all of ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE + ELISYM_PROVIDER_PRICE_TOKEN',
     },
   )
   .refine(
@@ -187,14 +205,16 @@ let unsecuredRuntimeWarned = false;
 
 const SINGLE_PRODUCT_ENV_KEYS = [
   'ELISYM_PROVIDER_CAPABILITIES',
-  'ELISYM_PROVIDER_PRICE_SOL',
+  'ELISYM_PROVIDER_PRICE',
+  'ELISYM_PROVIDER_PRICE_TOKEN',
   'ELISYM_PROVIDER_NAME',
   'ELISYM_PROVIDER_DESCRIPTION',
 ] as const;
 
 interface SingleProductConflictInput {
   capabilities: string[] | undefined;
-  priceLamports: bigint | undefined;
+  priceSubunits: bigint | undefined;
+  priceTokenExplicit: boolean;
   name: string | undefined;
   description: string | undefined;
   hasProducts: boolean;
@@ -212,8 +232,11 @@ export function checkProviderProductConflict(input: SingleProductConflictInput):
     if (key === 'ELISYM_PROVIDER_CAPABILITIES') {
       return input.capabilities !== undefined;
     }
-    if (key === 'ELISYM_PROVIDER_PRICE_SOL') {
-      return input.priceLamports !== undefined;
+    if (key === 'ELISYM_PROVIDER_PRICE') {
+      return input.priceSubunits !== undefined;
+    }
+    if (key === 'ELISYM_PROVIDER_PRICE_TOKEN') {
+      return input.priceTokenExplicit;
     }
     if (key === 'ELISYM_PROVIDER_NAME') {
       return input.name !== undefined;
@@ -225,7 +248,7 @@ export function checkProviderProductConflict(input: SingleProductConflictInput):
   }
   throw new Error(
     `ELISYM_PROVIDER_PRODUCTS conflicts with the single-product vars (${conflicting.join(', ')}). ` +
-      'Pick one shape: either the PRODUCTS JSON array, or the separate CAPABILITIES/PRICE/NAME/DESCRIPTION vars.',
+      'Pick one shape: either the PRODUCTS JSON array, or the separate CAPABILITIES/PRICE/PRICE_TOKEN/NAME/DESCRIPTION vars.',
   );
 }
 
@@ -292,17 +315,33 @@ function parseProducts(value: string | undefined): ProviderProduct[] | undefined
       throw new Error(`ELISYM_PROVIDER_PRODUCTS[${index}] must be an object`);
     }
     const obj = entry as Record<string, unknown>;
-    const priceSol = obj.priceSol ?? obj.price_sol;
-    if (typeof priceSol !== 'string' || priceSol.length === 0) {
+    const priceRaw = obj.price ?? obj.priceSol ?? obj.price_sol;
+    if (typeof priceRaw !== 'string' || priceRaw.length === 0) {
       throw new Error(
-        `ELISYM_PROVIDER_PRODUCTS[${index}].priceSol must be a non-empty string (SOL amount)`,
+        `ELISYM_PROVIDER_PRODUCTS[${index}].price must be a non-empty string (decimal in token units)`,
       );
+    }
+    const tokenRaw = obj.token ?? 'sol';
+    const tokenResult = tokenSchema.safeParse(tokenRaw);
+    if (!tokenResult.success) {
+      throw new Error(
+        `ELISYM_PROVIDER_PRODUCTS[${index}].token must be 'sol' or 'usdc' (got ${JSON.stringify(tokenRaw)})`,
+      );
+    }
+    const asset = resolvePriceAsset(tokenResult.data);
+    let priceSubunits: bigint;
+    try {
+      priceSubunits = parseAssetAmount(asset, priceRaw);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`ELISYM_PROVIDER_PRODUCTS[${index}].price: ${detail}`);
     }
     return ProviderProductSchema.parse({
       name: obj.name,
       description: obj.description,
       capabilities: obj.capabilities,
-      priceLamports: solToLamports(priceSol),
+      priceSubunits,
+      asset,
     });
   });
 }
@@ -354,8 +393,25 @@ export function validateConfig(
   const signerKind = read('ELISYM_SIGNER_KIND', 'local');
 
   const providerCapabilities = parseList(read('ELISYM_PROVIDER_CAPABILITIES'));
-  const providerPriceRaw = read('ELISYM_PROVIDER_PRICE_SOL');
-  const providerPriceLamports = providerPriceRaw ? solToLamports(providerPriceRaw) : undefined;
+  const providerPriceRaw = read('ELISYM_PROVIDER_PRICE');
+  const providerPriceTokenRaw = read('ELISYM_PROVIDER_PRICE_TOKEN');
+  let providerPriceSubunits: bigint | undefined;
+  let providerPriceAsset: Asset | undefined;
+  if (providerPriceRaw !== undefined) {
+    const tokenResult = tokenSchema.safeParse(providerPriceTokenRaw ?? 'sol');
+    if (!tokenResult.success) {
+      throw new Error(
+        `ELISYM_PROVIDER_PRICE_TOKEN must be 'sol' or 'usdc' (got ${JSON.stringify(providerPriceTokenRaw)})`,
+      );
+    }
+    providerPriceAsset = resolvePriceAsset(tokenResult.data);
+    try {
+      providerPriceSubunits = parseAssetAmount(providerPriceAsset, providerPriceRaw);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`ELISYM_PROVIDER_PRICE: ${detail}`);
+    }
+  }
   const providerActionMap = parseActionMap(read('ELISYM_PROVIDER_ACTION_MAP'));
   const providerName = read('ELISYM_PROVIDER_NAME');
   const providerDescription = read('ELISYM_PROVIDER_DESCRIPTION');
@@ -365,7 +421,8 @@ export function validateConfig(
 
   checkProviderProductConflict({
     capabilities: providerCapabilities,
-    priceLamports: providerPriceLamports,
+    priceSubunits: providerPriceSubunits,
+    priceTokenExplicit: providerPriceTokenRaw !== undefined,
     name: providerName,
     description: providerDescription,
     hasProducts: providerProducts !== undefined,
@@ -388,7 +445,8 @@ export function validateConfig(
     relays: parseList(read('ELISYM_RELAYS')),
     solanaRpcUrl: read('ELISYM_SOLANA_RPC_URL'),
     providerCapabilities,
-    providerPriceLamports,
+    providerPriceSubunits,
+    providerPriceAsset,
     providerActionMap,
     providerName,
     providerDescription,

@@ -10,6 +10,7 @@ import {
 import { identityFromHex, identityToHex } from '../lib/identity';
 import { logger } from '../lib/logger';
 import { loadPersistedNostrSecret, persistNostrSecret } from '../lib/secretsMemory';
+import { detectSleepGap } from '../lib/watchdog';
 import { getState } from '../state';
 
 export class ElisymService extends Service {
@@ -24,7 +25,12 @@ export class ElisymService extends Service {
   private probeTimer?: ReturnType<typeof setInterval>;
   private selfPingTimer?: ReturnType<typeof setInterval>;
   private watchdogStopped = false;
-  private watchdogBusy = false;
+  // Split flags: a slow probe must not suppress the self-ping that follows,
+  // since they exercise different layers (cheap query vs. live subscription).
+  private probeBusy = false;
+  private selfPingBusy = false;
+  private lastTickAt = Date.now();
+  private readonly now: () => number = Date.now;
 
   static override async start(runtime: IAgentRuntime): Promise<ElisymService> {
     const service = new ElisymService(runtime);
@@ -80,13 +86,34 @@ export class ElisymService extends Service {
     this.subscribeToPings();
   }
 
+  // Returns true if a sleep gap was detected and pool reset was forced.
+  // On suspend the WS connections die from the relay side, but the next
+  // cheap query may still pass via a freshly opened socket - meanwhile the
+  // long-lived ping subscription stays dead. Forcing a reset on the first
+  // post-suspend tick avoids that window.
+  private checkSleepGap(): boolean {
+    const result = detectSleepGap(this.lastTickAt, this.now());
+    this.lastTickAt = result.tickedAt;
+    if (result.sleepDetected) {
+      logger.warn({ gapMs: result.gapMs }, 'watchdog detected sleep gap, resetting pool');
+      this.resetPoolAndResubscribe();
+      return true;
+    }
+    return false;
+  }
+
   private startWatchdog(): void {
+    this.lastTickAt = this.now();
+
     this.probeTimer = setInterval(async () => {
-      if (this.watchdogStopped || this.watchdogBusy || !this.client) {
+      if (this.watchdogStopped || this.probeBusy || !this.client) {
         return;
       }
-      this.watchdogBusy = true;
+      this.probeBusy = true;
       try {
+        if (this.checkSleepGap()) {
+          return;
+        }
         const ok = await this.client.pool.probe(WATCHDOG_PROBE_TIMEOUT_MS);
         if (this.watchdogStopped || ok) {
           return;
@@ -96,18 +123,21 @@ export class ElisymService extends Service {
       } catch (error) {
         logger.warn({ err: error }, 'watchdog probe errored');
       } finally {
-        this.watchdogBusy = false;
+        this.probeBusy = false;
       }
     }, WATCHDOG_PROBE_INTERVAL_MS);
 
     // selfPingIntervalMs MUST stay > PING_CACHE_TTL_MS (30s in SDK) or the
     // cached "online: true" masks a dead subscription.
     this.selfPingTimer = setInterval(async () => {
-      if (this.watchdogStopped || this.watchdogBusy || !this.client || !this.identity) {
+      if (this.watchdogStopped || this.selfPingBusy || !this.client || !this.identity) {
         return;
       }
-      this.watchdogBusy = true;
+      this.selfPingBusy = true;
       try {
+        if (this.checkSleepGap()) {
+          return;
+        }
         const result = await this.client.ping.pingAgent(
           this.identity.publicKey,
           WATCHDOG_SELF_PING_TIMEOUT_MS,
@@ -120,7 +150,7 @@ export class ElisymService extends Service {
       } catch (error) {
         logger.warn({ err: error }, 'watchdog self-ping errored');
       } finally {
-        this.watchdogBusy = false;
+        this.selfPingBusy = false;
       }
     }, WATCHDOG_SELF_PING_INTERVAL_MS);
   }

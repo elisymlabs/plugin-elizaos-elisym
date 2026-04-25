@@ -1,6 +1,6 @@
+import { formatSol } from '@elisym/sdk';
 import type { Action, ActionResult, IAgentRuntime } from '@elizaos/core';
 import { SERVICE_TYPES } from '../constants';
-import { formatLamportsAsSol } from '../lib/pricing';
 import type { WalletService } from '../services/WalletService';
 import { getState, hasState } from '../state';
 
@@ -19,7 +19,7 @@ export const checkWalletAction: Action = {
     const text = [
       `Address: ${wallet.address}`,
       `Network: ${config.network}`,
-      `Balance: ${formatLamportsAsSol(balance)} SOL`,
+      `Balance: ${formatSol(Number(balance))}`,
     ].join('\n');
     await callback?.({ text, source: 'elisym' });
     return {

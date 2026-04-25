@@ -5,7 +5,7 @@
     "": {
       "name": "@elisym/plugin-elizaos-elisym",
       "dependencies": {
-        "@elisym/sdk": "~0.7.0",
+        "@elisym/sdk": "~0.10.0",
         "@solana/kit": "~6.8.0",
         "bs58": "~6.0.0",
         "decimal.js-light": "~2.5.0",
@@ -32,7 +32,7 @@
   "packages": {
     "@cfworker/json-schema": ["@cfworker/json-schema@4.1.1", "", {}, "sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og=="],
 
-    "@elisym/sdk": ["@elisym/sdk@0.7.0", "", { "dependencies": { "yaml": "~2.8.3", "zod": "~3.25.0" }, "peerDependencies": { "@solana-program/system": "~0.12.0", "@solana/kit": "~6.8.0", "decimal.js-light": "~2.5.0", "nostr-tools": "~2.23.0" } }, "sha512-PuI2wZNsuKHiAPdGlV9kaJAsjthR+18LqYY+VmAeIPB1wEHZPvIkGyofmgQj2TpiYHGU2KLNX+eLr+q9Cesoyw=="],
+    "@elisym/sdk": ["@elisym/sdk@0.10.1", "", { "dependencies": { "yaml": "~2.8.3", "zod": "~3.25.0" }, "peerDependencies": { "@solana-program/system": "~0.12.0", "@solana-program/token": "~0.5.0", "@solana/kit": "~6.8.0", "decimal.js-light": "~2.5.0", "nostr-tools": "~2.23.0" } }, "sha512-DTKwKUCepSgGU4LFK3cCMVoKunZgJ1HtsDLxhka7hC2QWWJ10ArR6lQjItqyWsOWYmKged1pgugtjKwS1OEzWw=="],
 
     "@elizaos/core": ["@elizaos/core@1.7.2", "", { "dependencies": { "@langchain/core": "^1.0.0", "@langchain/textsplitters": "^1.0.0", "adze": "^2.2.5", "crypto-browserify": "^3.12.0", "dotenv": "^17.2.3", "fast-redact": "^3.5.0", "glob": "^13.0.0", "handlebars": "^4.7.8", "pdfjs-dist": "^5.2.133", "unique-names-generator": "^4.7.1", "uuid": "^13.0.0", "zod": "^4.3.5" } }, "sha512-NUw+YIXTejCCB07jevJ6cTbd/FKTqVoPwDrMMuBcjHeM+9UlQKFadDJooWEUREf37WS4KBegwLUOnr9H9CXpcw=="],
 
@@ -241,6 +241,8 @@
     "@scure/bip39": ["@scure/bip39@2.0.1", "", { "dependencies": { "@noble/hashes": "2.0.1", "@scure/base": "2.0.0" } }, "sha512-PsxdFj/d2AcJcZDX1FXN3dDgitDDTmwf78rKZq1a6c1P1Nan1X/Sxc7667zU3U+AN60g7SxxP0YCVw2H/hBycg=="],
 
     "@solana-program/system": ["@solana-program/system@0.12.0", "", { "peerDependencies": { "@solana/kit": "^6.1.0" } }, "sha512-ZnAAWeGVMWNtJhw3GdifI2HnhZ0A0H0qs8tBkcFvxp/8wIavvO+GOM4Jd0N22u2+Lni2zcwvcrxrsxj6Mjphng=="],
+
+    "@solana-program/token": ["@solana-program/token@0.5.1", "", { "peerDependencies": { "@solana/kit": "^2.1.0" } }, "sha512-bJvynW5q9SFuVOZ5vqGVkmaPGA0MCC+m9jgJj1nk5m20I389/ms69ASnhWGoOPNcie7S9OwBX0gTj2fiyWpfag=="],
 
     "@solana/accounts": ["@solana/accounts@6.8.0", "", { "dependencies": { "@solana/addresses": "6.8.0", "@solana/codecs-core": "6.8.0", "@solana/codecs-strings": "6.8.0", "@solana/errors": "6.8.0", "@solana/rpc-spec": "6.8.0", "@solana/rpc-types": "6.8.0" }, "peerDependencies": { "typescript": ">=5.0.0" }, "optionalPeers": ["typescript"] }, "sha512-rXjFYVopaEw1H2PTBQbRjKr+0i4EFuBEhRT5E0dI4cMaabSb4KKypC2gaf47+6cjU3hMlM1AcsyIs72/MqAVBw=="],
 

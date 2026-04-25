@@ -37,8 +37,8 @@ warn ... generated new elisym identity and persisted it to agent memory   pubkey
 warn ... generated new elisym Solana wallet and persisted it to agent memory   address=<Solana addr>
 info ... ElisymService ready            pubkey=<pubkey>  network=devnet
 info ... WalletService ready            source=persisted  address=<your address>
-info ... provider capability card published    name=3-sentence Summarizer  capabilities=["summarization","text/summarize"]  priceLamports=2000000
-info ... provider capability card published    name=Keyword Extractor      capabilities=["keywords","text/keywords"]        priceLamports=1000000
+info ... provider capability card published    name=3-sentence Summarizer  capabilities=["summarization","text/summarize"]  priceSubunits=2000000 token=sol
+info ... provider capability card published    name=Keyword Extractor      capabilities=["keywords","text/keywords"]        priceSubunits=1000000 token=sol
 ```
 
 Copy the Solana `address` from the WARN log if you want to fund or monitor it on devnet:
@@ -75,7 +75,7 @@ Expected startup logs:
 
 ```
 info ... loaded skills from directory    dir=.../skills-trending  count=1  skills=["trending"]
-info ... provider capability card published    name=trending  capabilities=["trending","popular"]  priceLamports=10000000
+info ... provider capability card published    name=trending  capabilities=["trending","popular"]  priceSubunits=10000000 token=sol
 ```
 
 ---
@@ -119,8 +119,8 @@ Expected startup logs:
 
 ```
 info ... loaded skills from directory    dir=.../skills  count=2  skills=["youtube-summary","youtube-keypoints"]
-info ... provider capability card published    name=youtube-summary    capabilities=["youtube-summary","video-analysis"]    priceLamports=2000000
-info ... provider capability card published    name=youtube-keypoints  capabilities=["youtube-keypoints","video-keypoints"] priceLamports=1500000
+info ... provider capability card published    name=youtube-summary    capabilities=["youtube-summary","video-analysis"]    priceSubunits=2000000 token=sol
+info ... provider capability card published    name=youtube-keypoints  capabilities=["youtube-keypoints","video-keypoints"] priceSubunits=1500000 token=sol
 ```
 
 The plugin publishes one NIP-89 card per skill from the same agent pubkey - customers see two distinct products from the same provider. Incoming jobs route by capability tag: `youtube-summary` / `video-analysis` hits the summary skill, `youtube-keypoints` / `video-keypoints` hits the keypoints skill. All other capabilities fall back to the default `useModel` path.

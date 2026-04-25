@@ -19,12 +19,15 @@ export const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
 
 export const MAX_INCOMING_JOB_BYTES = 64 * 1024;
 
-export const HEARTBEAT_INTERVAL_MS = 10 * 60 * 1000;
-
 export const WATCHDOG_PROBE_INTERVAL_MS = 5 * 60 * 1000;
 export const WATCHDOG_PROBE_TIMEOUT_MS = 10_000;
 export const WATCHDOG_SELF_PING_INTERVAL_MS = 10 * 60 * 1000;
 export const WATCHDOG_SELF_PING_TIMEOUT_MS = 15_000;
+// If two consecutive watchdog ticks are separated by more than
+// `min(probeInterval, selfPingInterval) * MULTIPLIER`, the host was almost
+// certainly suspended (sleep / hibernation / container pause). Force a pool
+// reset on the first post-suspend tick before trusting probe/ping results.
+export const WATCHDOG_SLEEP_DETECT_MULTIPLIER = 2;
 
 export const DEFAULT_DEVNET_RPC = 'https://api.devnet.solana.com';
 export const DEFAULT_MAINNET_RPC = 'https://api.mainnet-beta.solana.com';

@@ -9,7 +9,7 @@ import { Service, type IAgentRuntime, type ServiceTypeName } from '@elizaos/core
 import type { Event, Filter } from 'nostr-tools';
 import type { LimitFunction } from 'p-limit';
 import pLimit from 'p-limit';
-import { HEARTBEAT_INTERVAL_MS, MAX_CONCURRENT_INCOMING_JOBS, SERVICE_TYPES } from '../constants';
+import { MAX_CONCURRENT_INCOMING_JOBS, SERVICE_TYPES } from '../constants';
 import type { ElisymConfig, ProviderProduct } from '../environment';
 import { handleIncomingJob } from '../handlers/incomingJobHandler';
 import { logger } from '../lib/logger';
@@ -32,6 +32,10 @@ interface ProductCard {
     network: ElisymConfig['network'];
     address: string;
     job_price: number;
+    token: string;
+    mint?: string;
+    decimals: number;
+    symbol: string;
   };
 }
 
@@ -43,7 +47,6 @@ export class ProviderService extends Service {
 
   private sub?: SubCloser;
   private publishedCards: ProductCard[] = [];
-  private heartbeatTimer?: ReturnType<typeof setInterval>;
   private unregisterResetListener?: () => void;
 
   static override async start(runtime: IAgentRuntime): Promise<ProviderService> {
@@ -124,7 +127,9 @@ export class ProviderService extends Service {
           {
             name: card.name,
             capabilities: card.capabilities,
-            priceLamports: card.payment.job_price,
+            priceSubunits: card.payment.job_price,
+            token: card.payment.token,
+            symbol: card.payment.symbol,
           },
           'provider capability card published',
         );
@@ -144,19 +149,11 @@ export class ProviderService extends Service {
 
     // NostrPool.reset() (fired by the watchdog on relay failure) closes every
     // tracked subscription. Re-open the job-request sub on the new pool, or
-    // the provider silently stops accepting jobs while heartbeats keep flowing.
+    // the provider silently stops accepting jobs.
     this.unregisterResetListener = client.pool.onReset(() => {
       logger.info('pool reset observed; re-subscribing to job requests');
       this.openJobSubscription(client, identity, limit);
     });
-
-    this.heartbeatTimer = setInterval(() => {
-      for (const card of this.publishedCards) {
-        client.discovery.publishCapability(identity, card, [KIND_JOB_REQUEST]).catch((error) => {
-          logger.debug({ err: error, name: card.name }, 'heartbeat republish failed (non-fatal)');
-        });
-      }
-    }, HEARTBEAT_INTERVAL_MS);
   }
 
   private openJobSubscription(
@@ -230,10 +227,6 @@ export class ProviderService extends Service {
   }
 
   override async stop(): Promise<void> {
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = undefined;
-    }
     if (this.unregisterResetListener) {
       this.unregisterResetListener();
       this.unregisterResetListener = undefined;
@@ -281,7 +274,11 @@ function buildCard(
       chain: 'solana',
       network,
       address,
-      job_price: Number(product.priceLamports),
+      job_price: Number(product.priceSubunits),
+      token: product.asset.token,
+      ...(product.asset.mint ? { mint: product.asset.mint } : {}),
+      decimals: product.asset.decimals,
+      symbol: product.asset.symbol,
     },
   };
 }

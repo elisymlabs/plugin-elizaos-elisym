@@ -15,7 +15,11 @@ export const publishServiceAction: Action = {
       return false;
     }
     const { config } = getState(runtime);
-    return !!config.providerCapabilities?.length && !!config.providerPriceLamports;
+    return (
+      !!config.providerCapabilities?.length &&
+      config.providerPriceSubunits !== undefined &&
+      config.providerPriceAsset !== undefined
+    );
   },
   handler: async (runtime, _message, _state, _options, callback): Promise<ActionResult> => {
     const { config } = getState(runtime);
@@ -24,12 +28,17 @@ export const publishServiceAction: Action = {
     if (!elisym || !wallet) {
       throw new Error('Elisym/Wallet services must be running');
     }
-    if (!config.providerCapabilities || !config.providerPriceLamports) {
+    if (
+      !config.providerCapabilities ||
+      config.providerPriceSubunits === undefined ||
+      config.providerPriceAsset === undefined
+    ) {
       throw new Error('Provider mode misconfigured');
     }
     const meta = resolveAgentMeta(runtime.character);
     const name = config.providerName ?? meta.name;
     const description = config.providerDescription ?? meta.about;
+    const asset = config.providerPriceAsset;
     const eventId = await elisym.getClient().discovery.publishCapability(
       elisym.getIdentity(),
       {
@@ -40,7 +49,11 @@ export const publishServiceAction: Action = {
           chain: 'solana',
           network: config.network,
           address: wallet.address,
-          job_price: Number(config.providerPriceLamports),
+          job_price: Number(config.providerPriceSubunits),
+          token: asset.token,
+          ...(asset.mint ? { mint: asset.mint } : {}),
+          decimals: asset.decimals,
+          symbol: asset.symbol,
         },
       },
       [KIND_JOB_REQUEST],

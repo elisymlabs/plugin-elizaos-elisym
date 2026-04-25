@@ -10,7 +10,7 @@ const NON_ELISYM_ENV_KEYS = ['SECRET_SALT', 'ELIZA_SERVER_AUTH_TOKEN'] as const;
 
 const MIN_PROVIDER = {
   ELISYM_PROVIDER_CAPABILITIES: 'summarization',
-  ELISYM_PROVIDER_PRICE_SOL: '0.001',
+  ELISYM_PROVIDER_PRICE: '0.001',
 } as const;
 
 function envless<T>(fn: () => T, overrides?: Record<string, string | undefined>): T {
@@ -65,7 +65,9 @@ describe('validateConfig', () => {
     );
     expect(cfg.network).toBe('devnet');
     expect(cfg.providerCapabilities).toEqual(['summarization']);
-    expect(cfg.providerPriceLamports).toBe(1_000_000n);
+    expect(cfg.providerPriceSubunits).toBe(1_000_000n);
+    expect(cfg.providerPriceAsset?.token).toBe('sol');
+    expect(cfg.providerPriceAsset?.symbol).toBe('SOL');
     expect(cfg.nostrPrivateKeyHex).toBe(VALID_HEX);
   });
 
@@ -127,12 +129,13 @@ describe('validateConfig', () => {
         ELISYM_NOSTR_PRIVATE_KEY: VALID_HEX,
         ELISYM_SOLANA_PRIVATE_KEY: VALID_SOLANA,
         ELISYM_PROVIDER_CAPABILITIES: 'summarization, text/summarize',
-        ELISYM_PROVIDER_PRICE_SOL: '0.002',
+        ELISYM_PROVIDER_PRICE: '0.002',
         ELISYM_PROVIDER_ACTION_MAP: '{"summarization":"SUMMARIZE_TEXT"}',
       }),
     );
     expect(cfg.providerCapabilities).toEqual(['summarization', 'text/summarize']);
-    expect(cfg.providerPriceLamports).toBe(2_000_000n);
+    expect(cfg.providerPriceSubunits).toBe(2_000_000n);
+    expect(cfg.providerPriceAsset?.token).toBe('sol');
     expect(cfg.providerActionMap).toEqual({ summarization: 'SUMMARIZE_TEXT' });
   });
 
@@ -236,7 +239,8 @@ describe('validateConfig', () => {
         name: 'Echo',
         description: 'Echoes input',
         capabilities: ['echo'],
-        priceSol: '0.001',
+        price: '0.001',
+        token: 'sol',
       },
     ]);
 
@@ -248,7 +252,7 @@ describe('validateConfig', () => {
             ELISYM_SOLANA_PRIVATE_KEY: VALID_SOLANA,
             ELISYM_PROVIDER_PRODUCTS: VALID_PROVIDER_PRODUCTS,
             ELISYM_PROVIDER_CAPABILITIES: 'echo',
-            ELISYM_PROVIDER_PRICE_SOL: '0.001',
+            ELISYM_PROVIDER_PRICE: '0.001',
           }),
         ),
       ).toThrow(/conflicts with the single-product vars/);
@@ -260,7 +264,7 @@ describe('validateConfig', () => {
           ELISYM_NOSTR_PRIVATE_KEY: VALID_HEX,
           ELISYM_SOLANA_PRIVATE_KEY: VALID_SOLANA,
           ELISYM_PROVIDER_CAPABILITIES: 'echo',
-          ELISYM_PROVIDER_PRICE_SOL: '0.001',
+          ELISYM_PROVIDER_PRICE: '0.001',
         }),
       );
       expect(cfg.providerCapabilities).toEqual(['echo']);

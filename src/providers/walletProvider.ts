@@ -1,7 +1,7 @@
+import { formatSol } from '@elisym/sdk';
 import type { Provider } from '@elizaos/core';
 import { SERVICE_TYPES } from '../constants';
 import { logger } from '../lib/logger';
-import { formatLamportsAsSol } from '../lib/pricing';
 import type { WalletService } from '../services/WalletService';
 import { getState, hasState } from '../state';
 
@@ -21,7 +21,7 @@ export const walletProvider: Provider = {
     }
     try {
       const balance = await wallet.getBalance();
-      const text = `Wallet ${wallet.address.slice(0, 8)}... holds ${formatLamportsAsSol(balance)} SOL (${config.network}).`;
+      const text = `Wallet ${wallet.address.slice(0, 8)}... holds ${formatSol(Number(balance))} (${config.network}).`;
       return {
         text,
         values: {

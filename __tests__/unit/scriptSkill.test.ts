@@ -1,3 +1,4 @@
+import { NATIVE_SOL } from '@elisym/sdk';
 import { describe, expect, it } from 'vitest';
 import { ScriptSkill } from '../../src/skills/scriptSkill';
 import type { LlmClient, ToolDef, ToolResult, CompletionResult } from '../../src/skills/types';
@@ -28,7 +29,8 @@ describe('ScriptSkill', () => {
       name: 'noop',
       description: 'does nothing',
       capabilities: ['noop'],
-      priceLamports: 1000n,
+      priceSubunits: 1000n,
+      asset: NATIVE_SOL,
       skillDir: '/tmp',
       systemPrompt: 'be terse',
       tools: [
@@ -55,7 +57,8 @@ describe('ScriptSkill', () => {
       name: 'echoer',
       description: 'echo',
       capabilities: ['echo'],
-      priceLamports: 1000n,
+      priceSubunits: 1000n,
+      asset: NATIVE_SOL,
       skillDir: '/tmp',
       systemPrompt: 'echo',
       tools: [
@@ -90,7 +93,8 @@ describe('ScriptSkill', () => {
       name: 'fail',
       description: 'fail',
       capabilities: ['fail'],
-      priceLamports: 1000n,
+      priceSubunits: 1000n,
+      asset: NATIVE_SOL,
       skillDir: '/tmp',
       systemPrompt: '',
       tools: [
@@ -136,7 +140,8 @@ describe('ScriptSkill', () => {
       name: 'looper',
       description: 'loops forever',
       capabilities: ['loop'],
-      priceLamports: 1000n,
+      priceSubunits: 1000n,
+      asset: NATIVE_SOL,
       skillDir: '/tmp',
       systemPrompt: '',
       tools: [
@@ -168,7 +173,8 @@ describe('ScriptSkill', () => {
       name: 'x',
       description: 'x',
       capabilities: ['x'],
-      priceLamports: 1000n,
+      priceSubunits: 1000n,
+      asset: NATIVE_SOL,
       skillDir: '/tmp',
       systemPrompt: '',
       tools: [],
@@ -189,7 +195,8 @@ describe('ScriptSkill tool definitions passed to the LLM', () => {
       name: 'projector',
       description: 'x',
       capabilities: ['x'],
-      priceLamports: 1000n,
+      priceSubunits: 1000n,
+      asset: NATIVE_SOL,
       skillDir: '/tmp',
       systemPrompt: '',
       tools: [

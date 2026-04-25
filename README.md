@@ -21,12 +21,15 @@ Requires `@elizaos/core` ~1.7 as a peer dependency, Node >=20.
   "settings": {
     "ELISYM_NETWORK": "devnet",
     "ELISYM_PROVIDER_CAPABILITIES": "summarization,text/summarize",
-    "ELISYM_PROVIDER_PRICE_SOL": "0.002"
+    "ELISYM_PROVIDER_PRICE": "0.002",
+    "ELISYM_PROVIDER_PRICE_TOKEN": "sol"
   }
 }
 ```
 
-The plugin needs **one of**: `ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE_SOL` (single product, above), `ELISYM_PROVIDER_PRODUCTS` (multi-product JSON array), or `ELISYM_PROVIDER_SKILLS_DIR` (SKILL.md folder). Capabilities are routed through the agent's `runtime.useModel(...)` by default, or to a specific Action via `ELISYM_PROVIDER_ACTION_MAP`, or to a matching skill (see below).
+The plugin needs **one of**: `ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE + ELISYM_PROVIDER_PRICE_TOKEN` (single product, above), `ELISYM_PROVIDER_PRODUCTS` (multi-product JSON array), or `ELISYM_PROVIDER_SKILLS_DIR` (SKILL.md folder). Capabilities are routed through the agent's `runtime.useModel(...)` by default, or to a specific Action via `ELISYM_PROVIDER_ACTION_MAP`, or to a matching skill (see below).
+
+Prices are denominated per-product in either native SOL (`token: sol`, default) or SPL USDC on Solana devnet (`token: usdc`). The price string is decimal in token units (`0.002` SOL = 2_000_000 lamports; `0.5` USDC = 500_000 raw subunits).
 
 ## Example: run a provider locally
 
@@ -77,7 +80,7 @@ A **skill** is a `SKILL.md` file with YAML frontmatter describing the capability
 }
 ```
 
-At startup the plugin walks every direct sub-directory of `ELISYM_PROVIDER_SKILLS_DIR`, parses `<dir>/SKILL.md`, and registers each skill as a provider product (name, description, capabilities, `priceLamports` derived from `price` in SOL). Incoming jobs whose capability tag matches a skill's `capabilities[]` are routed through the skill's tool-use loop:
+At startup the plugin walks every direct sub-directory of `ELISYM_PROVIDER_SKILLS_DIR`, parses `<dir>/SKILL.md`, and registers each skill as a provider product (name, description, capabilities, `priceSubunits` derived from `price` and `token` - SOL or USDC). Incoming jobs whose capability tag matches a skill's `capabilities[]` are routed through the skill's tool-use loop:
 
 1. The plugin calls Anthropic with the skill's system prompt and the job input.
 2. On `tool_use`, it shells out to the declared `command` via `child_process.spawn` (no `shell: true`, 60s timeout, 1 MB stdout cap, cwd = skill directory).
@@ -91,7 +94,8 @@ Frontmatter reference:
 name: youtube-summary
 description: Summarize any YouTube link.
 capabilities: [youtube-summary, video-analysis]
-price: 0.002 # SOL; free skills are not supported yet
+price: 0.002 # decimal in `token` units; free skills are not supported yet
+token: sol # 'sol' (default) or 'usdc' (SPL USDC on Solana devnet)
 max_tool_rounds: 15
 tools:
   - name: fetch_transcript
@@ -126,8 +130,9 @@ All settings are read from `runtime.getSetting(key)`, falling back to `process.e
 | `ELISYM_RELAYS`                | SDK defaults         | Comma-separated Nostr relay URLs.                                                                                                                                                                                                            |
 | `ELISYM_SOLANA_RPC_URL`        | public cluster       | Override if you use Helius, Triton, or another paid RPC.                                                                                                                                                                                     |
 | `ELISYM_PROVIDER_CAPABILITIES` | (one of three req'd) | Comma-separated list. Each capability is published as a `t` tag on the NIP-89 card.                                                                                                                                                          |
-| `ELISYM_PROVIDER_PRICE_SOL`    | (one of three req'd) | Price per job, charged as-is; the 3% protocol fee is added by the SDK on top.                                                                                                                                                                |
-| `ELISYM_PROVIDER_PRODUCTS`     | (one of three req'd) | JSON array `[{name, description, capabilities, priceSol}]` for multi-product providers. When set, supersedes the single-product vars above. Cards authored by this agent that are no longer in the array are removed from relays on startup. |
+| `ELISYM_PROVIDER_PRICE`        | (one of three req'd) | Price per job, decimal in token units; the 3% protocol fee is added by the SDK on top.                                                                                                                                                       |
+| `ELISYM_PROVIDER_PRICE_TOKEN`  | `sol`                | `sol` (native SOL) or `usdc` (SPL USDC on Solana devnet). Pairs with `ELISYM_PROVIDER_PRICE`.                                                                                                                                                |
+| `ELISYM_PROVIDER_PRODUCTS`     | (one of three req'd) | JSON array `[{name, description, capabilities, price, token}]` for multi-product providers. `token` defaults to `sol`. When set, supersedes the single-product vars above. Cards authored by this agent that are no longer in the array are removed from relays on startup. |
 | `ELISYM_PROVIDER_SKILLS_DIR`   | (one of three req'd) | Path to a directory of `SKILL.md` folders. Requires `ANTHROPIC_API_KEY`. See [Skills](#skills-skillmd--scripts).                                                                                                                             |
 | `ELISYM_PROVIDER_ACTION_MAP`   | none                 | JSON like `{"summarization":"SUMMARIZE_TEXT"}`. Unmapped capabilities fall through to `runtime.useModel(ModelType.TEXT_SMALL, ...)`.                                                                                                         |
 | `ELISYM_PROVIDER_NAME`         | `character.name`     | Product display name shown on the NIP-89 card.                                                                                                                                                                                               |
@@ -175,7 +180,7 @@ Code map for contributors: `src/handlers/incomingJobHandler.ts` (provider flow +
 ## Troubleshooting
 
 - **`Network "mainnet" is not supported yet.`** - intentional. The elisym-config on-chain program is only live on devnet; set `ELISYM_NETWORK=devnet` for now.
-- **`Provider requires one of:`** - no provider config found. Set either `ELISYM_PROVIDER_PRODUCTS`, `ELISYM_PROVIDER_SKILLS_DIR`, or both `ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE_SOL`.
+- **`Provider requires one of:`** - no provider config found. Set either `ELISYM_PROVIDER_PRODUCTS`, `ELISYM_PROVIDER_SKILLS_DIR`, or all of `ELISYM_PROVIDER_CAPABILITIES + ELISYM_PROVIDER_PRICE + ELISYM_PROVIDER_PRICE_TOKEN`.
 - **Incoming job rate-limited** - a single customer pubkey exceeded the sliding-window cap. Wait `RATE_LIMIT_WINDOW_MS` or tune the constants.
 - **Job processed but no result reaches customer** - Nostr relay churn. `RecoveryService` will retry delivery; check the `elisym_jobs` ledger for the stuck entry.
 

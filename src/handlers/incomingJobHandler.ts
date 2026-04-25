@@ -1,8 +1,9 @@
-import type {
-  ElisymClient,
-  ElisymIdentity,
-  PaymentRequestData,
-  ProtocolConfigInput,
+import {
+  assetKey,
+  type ElisymClient,
+  type ElisymIdentity,
+  type PaymentRequestData,
+  type ProtocolConfigInput,
 } from '@elisym/sdk';
 import type { IAgentRuntime } from '@elizaos/core';
 import { ModelType } from '@elizaos/core';
@@ -143,16 +144,26 @@ export interface HandleIncomingJobInput {
 function baseLedger(
   event: Event,
   capability: string,
-  priceLamports: bigint,
+  priceSubunits: bigint,
+  assetKeyValue: string,
 ): Pick<
   JobLedgerEntry,
-  'jobEventId' | 'side' | 'capability' | 'priceLamports' | 'customerPubkey' | 'jobCreatedAt'
+  | 'jobEventId'
+  | 'side'
+  | 'capability'
+  | 'priceLamports'
+  | 'assetKey'
+  | 'customerPubkey'
+  | 'jobCreatedAt'
 > {
+  // Field on disk is still named `priceLamports` (SDK keeps it for ledger
+  // back-compat); the value is interpreted as subunits of `assetKey`.
   return {
     jobEventId: event.id,
     side: 'provider',
     capability,
-    priceLamports: priceLamports.toString(),
+    priceLamports: priceSubunits.toString(),
+    assetKey: assetKeyValue,
     customerPubkey: event.pubkey,
     jobCreatedAt: event.created_at * 1000,
   };
@@ -235,16 +246,17 @@ export async function handleIncomingJob(input: HandleIncomingJobInput): Promise<
     return;
   }
 
-  const ledgerBase = baseLedger(event, capability, product.priceLamports);
+  const ledgerBase = baseLedger(event, capability, product.priceSubunits, assetKey(product.asset));
   const rawEventJson = JSON.stringify(event);
 
   try {
     const protocolConfig = await fetchProtocolConfig(wallet.rpc, config.network);
-    const amount = Number(product.priceLamports);
+    const amount = Number(product.priceSubunits);
     const paymentData = paymentStrategyInstance().createPaymentRequest(
       wallet.address,
       amount,
       protocolConfig,
+      { asset: product.asset },
     );
     const paymentRequestJson = JSON.stringify(paymentData);
 

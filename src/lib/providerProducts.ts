@@ -34,7 +34,8 @@ export function deriveProductsFromSkills(skills: readonly Skill[]): ProviderProd
     name: skill.name,
     description: skill.description,
     capabilities: [...skill.capabilities],
-    priceLamports: skill.priceLamports,
+    priceSubunits: skill.priceSubunits,
+    asset: skill.asset,
   }));
 }
 
@@ -71,14 +72,16 @@ export function resolveProducts(
   if (
     config.providerCapabilities &&
     config.providerCapabilities.length > 0 &&
-    config.providerPriceLamports !== undefined
+    config.providerPriceSubunits !== undefined &&
+    config.providerPriceAsset !== undefined
   ) {
     const meta = resolveAgentMeta(character);
     const legacy: ProviderProduct = {
       name: config.providerName ?? meta.name,
       description: config.providerDescription ?? meta.about,
       capabilities: [...config.providerCapabilities],
-      priceLamports: config.providerPriceLamports,
+      priceSubunits: config.providerPriceSubunits,
+      asset: config.providerPriceAsset,
     };
     return mergeProducts([legacy], derived);
   }

@@ -1,6 +1,6 @@
 {
   "name": "@elisym/plugin-elizaos-elisym",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "description": "ElizaOS plugin for running a paid elisym provider agent on Nostr + Solana. Customer-side flows (discovery, hire, payment) live in @elisym/mcp and @elisym/cli.",
   "keywords": [
     "ai-agent",
@@ -51,7 +51,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@elisym/sdk": "~0.7.0",
+    "@elisym/sdk": "~0.10.0",
     "@solana/kit": "~6.8.0",
     "bs58": "~6.0.0",
     "decimal.js-light": "~2.5.0",
@@ -110,9 +110,14 @@
         "type": "string",
         "description": "Comma-separated capabilities to advertise. Required unless ELISYM_PROVIDER_PRODUCTS or ELISYM_PROVIDER_SKILLS_DIR is set."
       },
-      "ELISYM_PROVIDER_PRICE_SOL": {
+      "ELISYM_PROVIDER_PRICE": {
         "type": "string",
-        "description": "Price per job this agent charges, in SOL. Required unless ELISYM_PROVIDER_PRODUCTS or ELISYM_PROVIDER_SKILLS_DIR is set."
+        "description": "Price per job, decimal in the token denominated by ELISYM_PROVIDER_PRICE_TOKEN. Required (with ELISYM_PROVIDER_CAPABILITIES) unless ELISYM_PROVIDER_PRODUCTS or ELISYM_PROVIDER_SKILLS_DIR is set."
+      },
+      "ELISYM_PROVIDER_PRICE_TOKEN": {
+        "type": "string",
+        "default": "sol",
+        "description": "'sol' (native SOL) or 'usdc' (SPL USDC on Solana devnet). Pairs with ELISYM_PROVIDER_PRICE."
       },
       "ELISYM_PROVIDER_ACTION_MAP": {
         "type": "string",
@@ -128,7 +133,7 @@
       },
       "ELISYM_PROVIDER_PRODUCTS": {
         "type": "string",
-        "description": "JSON array of products: [{name, description, capabilities, priceSol}]. Supersedes ELISYM_PROVIDER_CAPABILITIES/PRICE_SOL/NAME/DESCRIPTION. Cards no longer in the array are deleted from relays on startup."
+        "description": "JSON array of products: [{name, description, capabilities, price, token}]. token is 'sol' (default) or 'usdc'; price is decimal in that token. Supersedes ELISYM_PROVIDER_CAPABILITIES/PRICE/PRICE_TOKEN/NAME/DESCRIPTION. Cards no longer in the array are deleted from relays on startup."
       },
       "ELISYM_SIGNER_KIND": {
         "type": "string",
